@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0e6c76">
+  <meta name="description" content="CIO WEARHACK2 の非公式 BLE 状態モニター">
+  <title>WEARHACK2 Control</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./src/app.js"></script>
+</head>
+<body>
+  <main class="app">
+    <header class="site-header">
+      <p class="eyebrow">非公式 BLE コントローラー · Step 1</p>
+      <h1>WEARHACK2 <span>Control</span></h1>
+      <p class="intro">本体に直接接続して、現在の動作状態を確認します。</p>
+    </header>
+
+    <section class="panel connect-panel" aria-labelledby="connection-heading">
+      <div class="panel-title-row">
+        <h2 id="connection-heading">Bluetooth 接続</h2>
+        <span id="connection-state" class="state-pill offline" role="status">未接続</span>
+      </div>
+      <p id="device-name" class="device-name">対象：Wearhack2</p>
+      <div class="button-row">
+        <button id="connect-button" class="button primary" type="button">機器を選択して接続</button>
+        <button id="disconnect-button" class="button secondary" type="button" disabled>切断</button>
+      </div>
+      <p id="connection-message" class="feedback" aria-live="polite">Android の Chrome で「接続」を押してください。</p>
+    </section>
+
+    <section class="readings" aria-label="本体の現在状態">
+      <article class="reading featured">
+        <h2>現在温度</h2>
+        <p class="reading-value"><span id="temperature">--</span><span class="unit"> ℃</span></p>
+        <p class="reading-note">本体から取得した実測温度です。目標温度ではありません。</p>
+      </article>
+      <article class="reading">
+        <h2>残り時間</h2>
+        <p id="remaining" class="reading-value time-value">--:--</p>
+        <p class="reading-note">本体側タイマー</p>
+      </article>
+      <article class="reading">
+        <h2>電源状態</h2>
+        <p id="power" class="reading-value power-value">不明</p>
+        <p class="reading-note">最後に受信した本体状態</p>
+      </article>
+    </section>
+
+    <section class="panel" aria-labelledby="refresh-heading">
+      <div class="panel-title-row">
+        <h2 id="refresh-heading">状態取得</h2>
+        <button id="refresh-button" class="button secondary small" type="button" disabled>今すぐ更新</button>
+      </div>
+      <p id="updated-at" class="meta">最終取得：未取得</p>
+      <p class="help">接続中は画面表示中に約5秒ごとに状態を取得します。切断した場合、古い状態は表示しません。</p>
+      <details class="diagnostics">
+        <summary>通信の詳細</summary>
+        <dl>
+          <dt>サービス</dt><dd><code>0xFFF0</code></dd>
+          <dt>送信</dt><dd><code>0xFFF2 (Write Without Response)</code></dd>
+          <dt>受信</dt><dd><code>0xFFF1 (Notify)</code></dd>
+          <dt>最後の受信パケット</dt><dd><code id="last-packet">未受信</code></dd>
+        </dl>
+      </details>
+    </section>
+
+    <footer class="footer">
+      <p>本ページは CIO の公式アプリではありません。Step 1 は状態表示のみ対応し、発熱・電源・温度の制御は行いません。</p>
+      <p>BLE 通信はブラウザーから本体へ直接送信され、サーバーへ転送されません。</p>
+    </footer>
+  </main>
+</body>
+</html>
