@@ -321,6 +321,8 @@ async function connect() {
     showMessage("Web Bluetoothを利用できません。Android ChromeでHTTPSのページを開いてください。", true);
     return;
   }
+  // A new connection attempt must always begin with the normal guarded range.
+  setSafetyUnlocked(false);
   state.connecting = true;
   setConnection("接続中", "connecting");
   showMessage("WEARHACK2への接続を開始します。");
