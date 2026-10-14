@@ -54,11 +54,22 @@
         <span class="setting-label">送信前の選択値</span>
       </div>
       <p class="help">目標温度は本体から読み戻せません。以下はWebアプリ側で選択している値で、現在の本体設定とは限りません。</p>
+      <div class="safety-lock" id="safety-lock-panel" role="group" aria-labelledby="safety-lock-heading">
+        <div class="safety-lock-heading">
+          <div>
+            <h3 id="safety-lock-heading">設定範囲のセーフティーロック</h3>
+            <p id="safety-mode-description" class="safety-lock-description">ロック中：30～55℃ / 1～120分</p>
+          </div>
+          <button id="safety-lock-button" class="button safety-lock-button" type="button" aria-pressed="false" aria-describedby="safety-mode-description safety-mode-warning">ロックを解除</button>
+        </div>
+        <p id="safety-mode-warning" class="safety-mode-warning" hidden>実験モード：25～60℃ / 1～150分。60℃・150分はメーカー公称範囲外です。高温では火傷、長時間運転では過熱の危険があります。身体に装着せず、温度を監視して短時間のみ実験してください。</p>
+        <p class="safety-lock-note">これはWebアプリ上の入力制限であり、本体の温度保護・非常停止機能ではありません。再読み込みや接続解除で自動的にロックします。</p>
+      </div>
       <div class="setting-row">
         <label for="target-temperature">目標温度</label>
         <div class="setting-fields">
-          <input id="target-temperature-range" type="range" min="35" max="55" value="40" step="1" aria-label="目標温度スライダー">
-          <div class="number-group"><input id="target-temperature" type="number" min="35" max="55" value="40" step="1" inputmode="numeric"><span>℃</span></div>
+          <input id="target-temperature-range" type="range" min="30" max="55" value="40" step="1" aria-label="目標温度スライダー">
+          <div class="number-group"><input id="target-temperature" type="number" min="30" max="55" value="40" step="1" inputmode="numeric"><span>℃</span></div>
         </div>
       </div>
       <div class="setting-row">

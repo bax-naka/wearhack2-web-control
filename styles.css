@@ -79,3 +79,16 @@ code { font-size: .76rem; white-space: normal; }
   .number-group input { width: 52px; }
   .action-row .button { font-size: .86rem; }
 }
+
+/* Explicit experimental range lock; this is a UI interlock, not hardware protection. */
+.safety-lock { margin-top: 16px; padding: 16px; border: 1px solid #aecbc9; border-radius: 14px; background: #f1f9f8; }
+.safety-lock.unlocked { background: #fff1ed; border-color: #c35b47; }
+.safety-lock-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.safety-lock h3 { font-size: .9rem; margin: 0 0 5px; }
+.safety-lock-description { color: #375f65; font-size: .8rem; margin: 0; font-weight: 650; }
+.safety-lock.unlocked .safety-lock-description { color: #9c3627; }
+.safety-lock-button { color: #165d65; background: #fff; border-color: #82aaa9; min-height: 42px; font-size: .83rem; }
+.safety-lock.unlocked .safety-lock-button { color: white; border-color: #a7392c; background: #9e392e; }
+.safety-mode-warning { color: #8b281e; font-size: .83rem; font-weight: 650; line-height: 1.6; padding: 10px; border-radius: 8px; background: #ffe3da; margin: 12px 0 0; }
+.safety-lock-note { margin: 10px 0 0; color: #5c7477; font-size: .74rem; line-height: 1.55; }
+.safety-mode-warning[hidden] { display: none; }

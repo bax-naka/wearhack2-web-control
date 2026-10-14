@@ -1,7 +1,8 @@
 import {
   SERVICE_UUID, COMMAND_UUID, NOTIFY_UUID, STATUS_REQUEST,
   MIN_TEMPERATURE, MAX_TEMPERATURE, MIN_DURATION, MAX_DURATION,
-  parseStatus, isSettingsAck, buildSettingsCommand, formatRemaining, formatHex
+  EXTENDED_MIN_TEMPERATURE, EXTENDED_MAX_TEMPERATURE, EXTENDED_MAX_DURATION,
+  requiresExtendedRange, parseStatus, isSettingsAck, buildSettingsCommand, formatRemaining, formatHex
 } from "./protocol.js";
 
 const $ = (id) => document.getElementById(id);
@@ -17,13 +18,18 @@ const ui = {
   targetDurationRange: $("target-duration-range"),
   powerOn: $("power-on-button"), powerOff: $("power-off-button"),
   apply: $("apply-button"), controlMessage: $("control-message"),
-  lastCommand: $("last-command")
+  lastCommand: $("last-command"),
+  safetyLock: $("safety-lock-button"),
+  safetyPanel: $("safety-lock-panel"),
+  safetyModeDescription: $("safety-mode-description"),
+  safetyWarning: $("safety-mode-warning")
 };
 const storageKey = "wearhack2-web-control-settings-v1";
 const state = {
   device: null, command: null, notify: null, interval: null,
   lastStatusAt: 0, lastStatus: null, connecting: false,
-  actionBusy: false, pendingAck: null, pendingStatus: null
+  actionBusy: false, pendingAck: null, pendingStatus: null,
+  safetyUnlocked: false
 };
 
 function showMessage(message, isError = false) {
@@ -44,14 +50,17 @@ function connected() {
 function selectedSettings() {
   const temperature = Number(ui.targetTemperature.value);
   const durationMinutes = Number(ui.targetDuration.value);
+  const minTemp = state.safetyUnlocked ? EXTENDED_MIN_TEMPERATURE : MIN_TEMPERATURE;
+  const maxTemp = state.safetyUnlocked ? EXTENDED_MAX_TEMPERATURE : MAX_TEMPERATURE;
+  const maxDuration = state.safetyUnlocked ? EXTENDED_MAX_DURATION : MAX_DURATION;
   // An empty number input must not silently become 0.
   if (ui.targetTemperature.value.trim() === "" || !Number.isInteger(temperature) ||
-      temperature < MIN_TEMPERATURE || temperature > MAX_TEMPERATURE) {
-    throw new RangeError("目標温度は35〜55℃の整数で入力してください");
+      temperature < minTemp || temperature > maxTemp) {
+    throw new RangeError(`目標温度は${minTemp}〜${maxTemp}℃の整数で入力してください`);
   }
   if (ui.targetDuration.value.trim() === "" || !Number.isInteger(durationMinutes) ||
-      durationMinutes < MIN_DURATION || durationMinutes > MAX_DURATION) {
-    throw new RangeError("タイマーは1〜120分の整数で入力してください");
+      durationMinutes < MIN_DURATION || durationMinutes > maxDuration) {
+    throw new RangeError(`タイマーは1〜${maxDuration}分の整数で入力してください`);
   }
   return {temperature, durationMinutes};
 }
@@ -66,27 +75,68 @@ function updateButtons() {
   ui.connect.textContent = state.device ? "再接続" : "機器を選択して接続";
   ui.disconnect.disabled = !connected();
   ui.refresh.disabled = !connected() || state.actionBusy;
+  ui.safetyLock.disabled = state.actionBusy || state.connecting;
   ui.powerOn.disabled = !usable || !valid;
   ui.powerOff.disabled = !usable || !valid;
   ui.apply.disabled = !usable || !valid || !state.lastStatus.powerOn;
 }
 
 function storeDraft() {
-  try { localStorage.setItem(storageKey, JSON.stringify(selectedSettings())); }
-  catch { /* Browser storage may be disabled; controls remain usable. */ }
+  try {
+    const draft = selectedSettings();
+    // Never persist values that require a new explicit safety unlock after a reload.
+    if (!requiresExtendedRange(draft)) {
+      localStorage.setItem(storageKey, JSON.stringify(draft));
+    }
+  } catch { /* No valid normal draft or browser storage may be disabled. */ }
 }
 function loadDraft() {
   try {
     const data = JSON.parse(localStorage.getItem(storageKey) || "{}");
-    if (Number.isInteger(data.temperature) && data.temperature >= 35 && data.temperature <= 55) {
+    if (Number.isInteger(data.temperature) && data.temperature >= MIN_TEMPERATURE && data.temperature <= MAX_TEMPERATURE) {
       ui.targetTemperature.value = String(data.temperature);
     }
-    if (Number.isInteger(data.durationMinutes) && data.durationMinutes >= 1 && data.durationMinutes <= 120) {
+    if (Number.isInteger(data.durationMinutes) && data.durationMinutes >= MIN_DURATION && data.durationMinutes <= MAX_DURATION) {
       ui.targetDuration.value = String(data.durationMinutes);
     }
   } catch { /* No saved settings. */ }
   ui.targetTemperatureRange.value = ui.targetTemperature.value;
   ui.targetDurationRange.value = ui.targetDuration.value;
+}
+
+function setSafetyUnlocked(unlocked) {
+  state.safetyUnlocked = unlocked;
+  const minTemp = unlocked ? EXTENDED_MIN_TEMPERATURE : MIN_TEMPERATURE;
+  const maxTemp = unlocked ? EXTENDED_MAX_TEMPERATURE : MAX_TEMPERATURE;
+  const maxDuration = unlocked ? EXTENDED_MAX_DURATION : MAX_DURATION;
+  for (const el of [ui.targetTemperature, ui.targetTemperatureRange]) {
+    el.min = String(minTemp);
+    el.max = String(maxTemp);
+  }
+  for (const el of [ui.targetDuration, ui.targetDurationRange]) {
+    el.min = String(MIN_DURATION);
+    el.max = String(maxDuration);
+  }
+  if (!unlocked) {
+    // Relocking does not send anything to the device. It only limits new input.
+    const clamp = (value, min, max, fallback) => {
+      if (value.trim() === "") return fallback;
+      const n = Number(value);
+      return Number.isFinite(n) ? Math.min(max, Math.max(min, Math.round(n))) : fallback;
+    };
+    ui.targetTemperature.value = String(clamp(ui.targetTemperature.value, minTemp, maxTemp, 40));
+    ui.targetDuration.value = String(clamp(ui.targetDuration.value, MIN_DURATION, maxDuration, 15));
+  }
+  ui.targetTemperatureRange.value = ui.targetTemperature.value;
+  ui.targetDurationRange.value = ui.targetDuration.value;
+  ui.safetyLock.setAttribute("aria-pressed", String(unlocked));
+  ui.safetyLock.textContent = unlocked ? "再ロックする" : "ロックを解除";
+  ui.safetyPanel.classList.toggle("unlocked", unlocked);
+  ui.safetyModeDescription.textContent = unlocked
+    ? "解除中：25～60℃ / 1～150分" : "ロック中：30～55℃ / 1～120分";
+  ui.safetyWarning.hidden = !unlocked;
+  if (!unlocked) storeDraft();
+  updateButtons();
 }
 
 function connectSettingsFields(number, range) {
@@ -144,6 +194,7 @@ function stopPolling() {
 }
 function handleDisconnect() {
   stopPolling();
+  setSafetyUnlocked(false);
   failWaiter("pendingAck", new Error("Bluetooth接続が切れました"));
   failWaiter("pendingStatus", new Error("Bluetooth接続が切れました"));
   state.command = null;
@@ -214,6 +265,17 @@ async function sendSettings(mode) {
     return;
   }
   if (mode === "apply" && !state.lastStatus.powerOn) return;
+  if (requiresExtendedRange(settings)) {
+    if (!state.safetyUnlocked) {
+      showControlMessage("この設定にはセーフティーロック解除が必要です。", true);
+      return;
+    }
+    // OFF remains immediately available; never delay stopping to show a dialog.
+    if (mode !== "off" && !window.confirm(
+      `仕様外設定 ${settings.temperature}℃ / ${settings.durationMinutes}分を送信します。\n` +
+      "メーカー公称範囲外の運転は火傷・過熱の恐れがあります。身体に装着せず、停止手段を確保していますか？"
+    )) return;
+  }
 
   state.actionBusy = true;
   updateButtons();
@@ -224,7 +286,7 @@ async function sendSettings(mode) {
     if (Date.now() - state.lastStatusAt > 12000) await requestStatus();
 
     const desiredPower = mode === "apply" ? state.lastStatus.powerOn : mode === "on";
-    const bytes = buildSettingsCommand({...settings, powerOn: desiredPower});
+    const bytes = buildSettingsCommand({...settings, powerOn: desiredPower, allowExtended: state.safetyUnlocked});
     const waiter = createWaiter("pendingAck", 3500, "設定コマンドのACKを受信できませんでした");
     try {
       await state.command.writeValueWithoutResponse(bytes);
@@ -301,6 +363,22 @@ async function connect() {
 }
 
 loadDraft();
+setSafetyUnlocked(false);
+ui.safetyLock.addEventListener("click", () => {
+  if (state.actionBusy || state.connecting) return;
+  if (state.safetyUnlocked) {
+    setSafetyUnlocked(false);
+    showControlMessage("セーフティーロックしました。新たなコマンドは送信していません。");
+    return;
+  }
+  if (!window.confirm(
+    "実験用の設定範囲（25～60℃、1～150分）を解除します。\n" +
+    "60℃・150分はメーカー公称上限を超え、安全性は未確認です。\n" +
+    "本体の安全機能が解除されるわけではありません。続行しますか？"
+  )) return;
+  setSafetyUnlocked(true);
+  showControlMessage("実験範囲を解除しました。高温・長時間運転は身体に装着せず短時間で確認してください。");
+});
 connectSettingsFields(ui.targetTemperature, ui.targetTemperatureRange);
 connectSettingsFields(ui.targetDuration, ui.targetDurationRange);
 ui.connect.addEventListener("click", () => { void connect(); });

@@ -4,10 +4,20 @@ export const COMMAND_UUID = "0000fff2-0000-1000-8000-00805f9b34fb";
 export const NOTIFY_UUID = "0000fff1-0000-1000-8000-00805f9b34fb";
 export const STATUS_REQUEST = Uint8Array.from([0xaa, 0x01, 0x02, 0xfd]);
 
-export const MIN_TEMPERATURE = 35;
+// Normal limits follow the original app UI and tested 120-minute timer.
+// The wider values below are experimental and must be explicitly unlocked.
+export const MIN_TEMPERATURE = 30;
 export const MAX_TEMPERATURE = 55;
 export const MIN_DURATION = 1;
 export const MAX_DURATION = 120;
+export const EXTENDED_MIN_TEMPERATURE = 25;
+export const EXTENDED_MAX_TEMPERATURE = 60;
+export const EXTENDED_MAX_DURATION = 150;
+
+export function requiresExtendedRange({temperature, durationMinutes}) {
+  return temperature < MIN_TEMPERATURE || temperature > MAX_TEMPERATURE ||
+    durationMinutes > MAX_DURATION;
+}
 
 export function formatHex(value) {
   return Array.from(value, (byte) => byte.toString(16).padStart(2, "0").toUpperCase()).join(" ");
@@ -28,12 +38,18 @@ function isIntegerBetween(value, min, max) {
 // Commands observed with normal application and replayed using nRF Connect.
 // Format: AA 06 01 HOURS MINUTES 00 TEMPERATURE POWER CHECK.
 // The zero-valued reserved field must remain unchanged until its purpose is known.
-export function buildSettingsCommand({temperature, durationMinutes, powerOn}) {
-  if (!isIntegerBetween(temperature, MIN_TEMPERATURE, MAX_TEMPERATURE)) {
-    throw new RangeError("目標温度は35〜55℃の整数で指定してください");
+export function buildSettingsCommand({temperature, durationMinutes, powerOn, allowExtended = false}) {
+  if (typeof allowExtended !== "boolean") {
+    throw new TypeError("拡張モードの指定が不正です");
   }
-  if (!isIntegerBetween(durationMinutes, MIN_DURATION, MAX_DURATION)) {
-    throw new RangeError("タイマーは1〜120分の整数で指定してください");
+  const minTemp = allowExtended ? EXTENDED_MIN_TEMPERATURE : MIN_TEMPERATURE;
+  const maxTemp = allowExtended ? EXTENDED_MAX_TEMPERATURE : MAX_TEMPERATURE;
+  const maxDuration = allowExtended ? EXTENDED_MAX_DURATION : MAX_DURATION;
+  if (!isIntegerBetween(temperature, minTemp, maxTemp)) {
+    throw new RangeError(`目標温度は${minTemp}〜${maxTemp}℃の整数で指定してください`);
+  }
+  if (!isIntegerBetween(durationMinutes, MIN_DURATION, maxDuration)) {
+    throw new RangeError(`タイマーは1〜${maxDuration}分の整数で指定してください`);
   }
   if (typeof powerOn !== "boolean") {
     throw new TypeError("電源状態はbooleanで指定してください");
