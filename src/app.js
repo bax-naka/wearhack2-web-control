@@ -77,7 +77,7 @@ function updateButtons() {
   ui.refresh.disabled = !connected() || state.actionBusy;
   ui.safetyLock.disabled = state.actionBusy || state.connecting;
   ui.powerOn.disabled = !usable || !valid;
-  ui.powerOff.disabled = !usable || !valid;
+  ui.powerOff.disabled = !usable; // Stopping must not depend on valid form input.
   ui.apply.disabled = !usable || !valid || !state.lastStatus.powerOn;
 }
 
@@ -254,11 +254,23 @@ async function refreshStatus() {
 async function sendSettings(mode) {
   if (!connected() || state.actionBusy) return;
   let settings;
+  let useSafeOffFallback = false;
   try {
     settings = selectedSettings();
   } catch (error) {
-    showControlMessage(error.message, true);
-    return;
+    if (mode !== "off") {
+      showControlMessage(error.message, true);
+      return;
+    }
+    // Keep OFF available despite invalid input by using a known normal setpoint.
+    settings = {temperature: 40, durationMinutes: 15};
+    useSafeOffFallback = true;
+  }
+  // OFF never leaves experimental settings as the stored last settings.
+  // A subsequent physical-button start can reuse the last command's parameters.
+  if (mode === "off" && requiresExtendedRange(settings)) {
+    settings = {temperature: 40, durationMinutes: 15};
+    useSafeOffFallback = true;
   }
   if (!state.lastStatus) {
     showControlMessage("本体の状態を取得してから操作してください。", true);
@@ -279,7 +291,9 @@ async function sendSettings(mode) {
 
   state.actionBusy = true;
   updateButtons();
-  showControlMessage("送信中です。ACKと本体状態を確認します。");
+  showControlMessage(useSafeOffFallback
+    ? "停止を送信中です。拡張値を残さないよう40℃・15分・OFFで送信します。"
+    : "送信中です。ACKと本体状態を確認します。");
   try {
     if (state.pendingStatus) await state.pendingStatus.promise;
     if (!connected()) throw new Error("Bluetooth接続が切れました");
@@ -300,7 +314,9 @@ async function sendSettings(mode) {
       const response = await requestStatus();
       if (response.powerOn === desiredPower) {
         const powerLabel = desiredPower ? "ON" : "OFF";
-        showControlMessage("本体の電源" + powerLabel + "を確認しました。目標温度は本体から読み戻せないため、設定値の反映はACKに基づく判断です。");
+        showControlMessage("本体の電源" + powerLabel + "を確認しました。" +
+          (useSafeOffFallback ? "40℃・15分・OFFを送信しています。" : "") +
+          "目標温度は本体から読み戻せないため、設定値の反映はACKに基づく判断です。");
       } else {
         showControlMessage("ACKは受信しましたが、要求した電源状態と本体状態が一致しません。再送前に本体を確認してください。", true);
       }
