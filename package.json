@@ -1,9 +1,9 @@
 {
   "name": "wearhack2-web-control",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
-    "test": "node --test"
+    "test": "node --check src/app.js && node --check src/protocol.js && node --test"
   }
 }
