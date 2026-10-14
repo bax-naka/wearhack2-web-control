@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0e6c76">
-  <meta name="description" content="CIO WEARHACK2 の非公式 BLE 状態モニター">
+  <meta name="description" content="CIO WEARHACK2の非公式BLE Webコントローラー">
   <title>WEARHACK2 Control</title>
   <link rel="stylesheet" href="./styles.css">
   <script type="module" src="./src/app.js"></script>
@@ -12,9 +12,9 @@
 <body>
   <main class="app">
     <header class="site-header">
-      <p class="eyebrow">非公式 BLE コントローラー · Step 1</p>
+      <p class="eyebrow">非公式 BLE コントローラー · Step 2</p>
       <h1>WEARHACK2 <span>Control</span></h1>
-      <p class="intro">本体に直接接続して、現在の動作状態を確認します。</p>
+      <p class="intro">本体の現在状態の確認と、温度・タイマー・電源の操作ができます。</p>
     </header>
 
     <section class="panel connect-panel" aria-labelledby="connection-heading">
@@ -27,14 +27,14 @@
         <button id="connect-button" class="button primary" type="button">機器を選択して接続</button>
         <button id="disconnect-button" class="button secondary" type="button" disabled>切断</button>
       </div>
-      <p id="connection-message" class="feedback" aria-live="polite">Android の Chrome で「接続」を押してください。</p>
+      <p id="connection-message" class="feedback" aria-live="polite">Android の Chrome で接続してください。</p>
     </section>
 
     <section class="readings" aria-label="本体の現在状態">
       <article class="reading featured">
         <h2>現在温度</h2>
         <p class="reading-value"><span id="temperature">--</span><span class="unit"> ℃</span></p>
-        <p class="reading-note">本体から取得した実測温度です。目標温度ではありません。</p>
+        <p class="reading-note">本体から取得した実測温度。目標温度とは異なります。</p>
       </article>
       <article class="reading">
         <h2>残り時間</h2>
@@ -48,27 +48,57 @@
       </article>
     </section>
 
+    <section class="panel settings-panel" aria-labelledby="settings-heading">
+      <div class="panel-title-row">
+        <h2 id="settings-heading">目標設定と電源操作</h2>
+        <span class="setting-label">送信前の選択値</span>
+      </div>
+      <p class="help">目標温度は本体から読み戻せません。以下はWebアプリ側で選択している値で、現在の本体設定とは限りません。</p>
+      <div class="setting-row">
+        <label for="target-temperature">目標温度</label>
+        <div class="setting-fields">
+          <input id="target-temperature-range" type="range" min="35" max="55" value="40" step="1" aria-label="目標温度スライダー">
+          <div class="number-group"><input id="target-temperature" type="number" min="35" max="55" value="40" step="1" inputmode="numeric"><span>℃</span></div>
+        </div>
+      </div>
+      <div class="setting-row">
+        <label for="target-duration">タイマー設定</label>
+        <div class="setting-fields">
+          <input id="target-duration-range" type="range" min="1" max="120" value="15" step="1" aria-label="タイマースライダー">
+          <div class="number-group"><input id="target-duration" type="number" min="1" max="120" value="15" step="1" inputmode="numeric"><span>分</span></div>
+        </div>
+      </div>
+      <p class="help">設定すると温度・タイマー・電源状態をまとめて送信します。タイマーが変更されると残り時間が再設定される場合があります。</p>
+      <div class="action-row">
+        <button id="power-on-button" class="button power-on" type="button" disabled>ON（加熱開始）</button>
+        <button id="power-off-button" class="button power-off" type="button" disabled>OFF（停止）</button>
+      </div>
+      <button id="apply-button" class="button primary apply-button" type="button" disabled>動作中の設定を変更</button>
+      <p class="help">「動作中の設定を変更」は本体ONのときだけ使えます。接続時に電源状態が取得できるまで操作はできません。</p>
+      <p id="control-message" class="feedback" aria-live="polite">設定コマンドはまだ送信していません。</p>
+      <p id="last-command" class="meta">最後の設定送信：なし</p>
+    </section>
+
     <section class="panel" aria-labelledby="refresh-heading">
       <div class="panel-title-row">
         <h2 id="refresh-heading">状態取得</h2>
         <button id="refresh-button" class="button secondary small" type="button" disabled>今すぐ更新</button>
       </div>
       <p id="updated-at" class="meta">最終取得：未取得</p>
-      <p class="help">接続中は画面表示中に約5秒ごとに状態を取得します。切断した場合、古い状態は表示しません。</p>
+      <p class="help">接続中、画面表示中に約5秒ごとに取得します。切断時は古い状態を消去します。</p>
       <details class="diagnostics">
         <summary>通信の詳細</summary>
         <dl>
           <dt>サービス</dt><dd><code>0xFFF0</code></dd>
           <dt>送信</dt><dd><code>0xFFF2 (Write Without Response)</code></dd>
           <dt>受信</dt><dd><code>0xFFF1 (Notify)</code></dd>
-          <dt>最後の受信パケット</dt><dd><code id="last-packet">未受信</code></dd>
+          <dt>最後の受信</dt><dd><code id="last-packet">未受信</code></dd>
         </dl>
       </details>
     </section>
-
     <footer class="footer">
-      <p>本ページは CIO の公式アプリではありません。Step 1 は状態表示のみ対応し、発熱・電源・温度の制御は行いません。</p>
-      <p>BLE 通信はブラウザーから本体へ直接送信され、サーバーへ転送されません。</p>
+      <p>非公式アプリです。本体から目標温度の読み戻しはできません。設定のACKは「受信を確認した」ことを意味し、温度制御の安全性を保証しません。</p>
+      <p>発熱機器です。異常時は本体ボタンで停止し、必要に応じて給電を外してください。</p>
     </footer>
   </main>
 </body>
