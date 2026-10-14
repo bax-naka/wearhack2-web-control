@@ -59,3 +59,23 @@ code { font-size: .76rem; white-space: normal; }
   .panel, .reading { padding: 15px; }
   .button { padding: 10px 12px; }
 }
+
+.setting-label { font-size: .73rem; color: #4b737c; background: #e4f3f4; border-radius: 100px; padding: 6px 10px; }
+.settings-panel .help { margin-top: 10px; }
+.setting-row { margin: 20px 0 12px; }
+.setting-row label { font-weight: 700; display: block; margin-bottom: 8px; font-size: .92rem; }
+.setting-fields { display: flex; align-items: center; gap: 12px; }
+.setting-fields input[type="range"] { flex: 1; min-width: 0; accent-color: #09838b; height: 28px; }
+.number-group { display: flex; align-items: center; border: 1px solid #b4ccd0; border-radius: 12px; padding: 0 10px 0 4px; gap: 2px; }
+.number-group input { font: inherit; font-size: 1.16rem; font-weight: 750; border: 0; width: 64px; height: 45px; text-align: center; background: transparent; color: inherit; }
+.number-group span { font-size: .82rem; }
+.number-group:focus-within { outline: 2px solid #65bdd3; }
+.action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 22px; }
+.button.power-on { background: #127a56; color: white; }
+.button.power-off { background: #fff; border-color: #bd7780; color: #993b47; }
+.apply-button { display: block; width: 100%; margin-top: 10px; }
+@media (max-width: 350px) {
+  .setting-fields { gap: 6px; }
+  .number-group input { width: 52px; }
+  .action-row .button { font-size: .86rem; }
+}
